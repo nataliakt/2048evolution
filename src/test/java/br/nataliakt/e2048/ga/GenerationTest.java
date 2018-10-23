@@ -4,6 +4,8 @@ import javafx.util.Pair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -18,29 +20,22 @@ class GenerationTest {
     private static Generation generation;
 
     @BeforeAll
-    static void setUp() {
-        generation = new Generation(GENE_LIMIT, GENE_MUTATION, CHROMOSOME_LENGTH);
-        for (int g = 0; g < GENERATION_LENGTH; g++) {
-            Chromosome chromosome = new Chromosome(generation);
-            for (int c = 0; c < CHROMOSOME_LENGTH; c++) {
-                chromosome.add(ThreadLocalRandom.current().nextInt(GENE_LIMIT));
-            }
-            generation.add(chromosome);
-        }
+    static void setUp() throws NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+        generation = new Generation(GENE_LIMIT, GENE_MUTATION, CHROMOSOME_LENGTH, GENERATION_LENGTH, Chromosome.class);
         System.out.println(generation);
     }
 
     @Test
     void nextGeneration() {
-        Generation next = generation.nextGeneration();
+        Generation next = generation.nextGeneration(Chromosome.class);
         System.out.println(next);
     }
 
     @Test
-    void crossover() {
+    void crossover() throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
         Chromosome mom = generation.getRouletteRandom();
         Chromosome dad = generation.getRouletteRandom();
-        List<Chromosome> children = generation.chrossover(mom, dad);
+        List<Chromosome> children = generation.chrossover(mom, dad, Chromosome.class);
 
         assertEquals(2, children.size(), "Wrong number of childrem");
         assertEquals(mom.size(), children.get(0).size(), "Wrong number of genes in the first children");

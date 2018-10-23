@@ -1,6 +1,7 @@
 package br.nataliakt.e2048.ga;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
@@ -14,7 +15,7 @@ import java.util.stream.Stream;
 public class Chromosome {
 
     private final int id;
-    private final List<Integer> geneList;
+    private final int[] geneList;
     private final Generation generation;
     private int fitness;
 
@@ -23,7 +24,7 @@ public class Chromosome {
      * @param generation
      * @param geneList
      */
-    public Chromosome(Generation generation, List<Integer> geneList) {
+    public Chromosome(Generation generation, int[] geneList) {
         id = NextId.nextId();
         this.generation = generation;
         this.geneList = geneList;
@@ -31,38 +32,28 @@ public class Chromosome {
     }
 
     /**
-     * Constructor with a new empty gene list
-     * @param generation
-     */
-    public Chromosome(Generation generation) {
-        id = NextId.nextId();
-        this.generation = generation;
-        geneList = new ArrayList<>();
-        fitness = 0;
-    }
-
-    /**
      * Update the fitness value
      */
-    private void updateFitness() {
-        fitness = getGeneList().mapToInt(gene -> gene ^ 2).sum();
+    public void updateFitness() {
+        fitness = geneList.length;
     }
 
     /**
      * Do the mutation
      */
     public void mutation() {
-        for (int i = 0; i < geneList.size(); i++) {
-            double chance = ThreadLocalRandom.current().nextDouble();
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        for (int i = 0; i < geneList.length; i++) {
+            double chance = r.nextDouble();
             if (chance >= generation.getMutation()) {
                 continue;
             }
 
             int mut;
             do {
-                mut = ThreadLocalRandom.current().nextInt(generation.getGeneLimit());
-            } while (mut == geneList.get(i));
-            geneList.set(i, mut);
+                mut = r.nextInt(generation.getGeneLimit());
+            } while (mut == geneList[i]);
+            geneList[i] = mut;
         }
     }
 
@@ -78,17 +69,8 @@ public class Chromosome {
      * Gene list as a stream for a unique use
      * @return
      */
-    public Stream<Integer> getGeneList() {
-        return geneList.stream();
-    }
-
-    /**
-     * Insert a new gene into the list
-     * @param gene
-     */
-    public void add(Integer gene) {
-        geneList.add(gene);
-        updateFitness();
+    public int[] getGeneList() {
+        return geneList;
     }
 
     /**
@@ -97,7 +79,7 @@ public class Chromosome {
      * @return
      */
     public Integer get(int index) {
-        return geneList.get(index);
+        return geneList[index];
     }
 
     /**
@@ -105,7 +87,7 @@ public class Chromosome {
      * @return
      */
     public int size() {
-        return geneList.size();
+        return geneList.length;
     }
 
     public int getId() {
@@ -118,10 +100,10 @@ public class Chromosome {
         stringBuilder.append("#");
         stringBuilder.append(id);
         stringBuilder.append(" [ ");
-        getGeneList().forEach(gene -> {
-            stringBuilder.append(gene);
+        for (int i = 0; i < geneList.length; i++) {
+            stringBuilder.append(geneList[i]);
             stringBuilder.append(" ");
-        });
+        }
         stringBuilder.append("]");
         return stringBuilder.toString();
     }

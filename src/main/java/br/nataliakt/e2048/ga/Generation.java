@@ -2,6 +2,7 @@ package br.nataliakt.e2048.ga;
 
 import javafx.util.Pair;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -14,13 +15,13 @@ import java.util.stream.Stream;
  * @author Natalia Kelim Thiel
  * @version 1.0.0
  */
-public class Generation {
+public class Generation <T extends Chromosome> {
 
     private final int id;
     private final int geneLimit;
     private final double mutation;
     private final int chromosomeSize;
-    private List<Chromosome> chromosomeList;
+    private List<T> chromosomeList;
     private int totalFitness;
 
     /**
@@ -30,6 +31,8 @@ public class Generation {
      */
     public Generation(int geneLimit, double mutation, int chromosomeSize) {
         assert geneLimit > 0;
+        assert mutation >= 0 && mutation <= 1;
+        assert chromosomeSize > 0;
 
         id = NextId.nextId();
         this.geneLimit = geneLimit;
@@ -40,19 +43,55 @@ public class Generation {
     }
 
     /**
+     * Constructor with a new random chromosome
+     * @param geneLimit
+     * @param mutation
+     * @param chromosomeSize
+     * @param generationSize
+     */
+    public Generation(int geneLimit, double mutation, int chromosomeSize, int generationSize, Class<T> classObject) throws InvocationTargetException, NoSuchMethodException, InstantiationException, IllegalAccessException {
+        this(geneLimit, mutation, chromosomeSize);
+        randomGeneration(generationSize, classObject);
+    }
+
+    public void randomGeneration(int generationSize, Class<T> classObject) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+        for (int c = 0; c < generationSize; c++) {
+            int[] geneList = new int[chromosomeSize];
+            for (int g = 0; g < chromosomeSize; g++) {
+                geneList[g] = ThreadLocalRandom.current().nextInt(geneLimit);
+            }
+            T chromosome = (T) classObject.getDeclaredConstructor(Generation.class, int[].class).newInstance(this, geneList);
+            chromosomeList.add(chromosome);
+        }
+    }
+
+    /**
      * Next generation
      * @return
      */
-    public Generation nextGeneration() {
+    public Generation nextGeneration(Class classObject) {
         List<Pair> parents = getParents();
         Generation next = new Generation(geneLimit, mutation, chromosomeSize);
         // Get the new children
-        parents.stream().forEach(parent ->
-            next.addAll(chrossover((Chromosome) parent.getKey(), (Chromosome) parent.getValue()))
+        parents.stream().parallel().forEach(parent ->
+                {
+                    try {
+                        List<Chromosome> chromosomes = chrossover((T) parent.getKey(), (T) parent.getValue(), classObject);
+                        next.addAll(chromosomes);
+                        for (Chromosome chromosome : chromosomes) {
+                            chromosome.mutation();
+                        }
+                    } catch (NoSuchMethodException e) {
+                        e.printStackTrace();
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    } catch (InvocationTargetException e) {
+                        e.printStackTrace();
+                    } catch (InstantiationException e) {
+                        e.printStackTrace();
+                    }
+                }
         );
-
-        // Apply the mutation
-        next.getChromosomeList().forEach(Chromosome::mutation);
 
         return next;
     }
@@ -63,23 +102,50 @@ public class Generation {
      * @param dad
      * @return
      */
-    protected List<Chromosome> chrossover(Chromosome mom, Chromosome dad) {
-        int cut = ThreadLocalRandom.current().nextInt(1, mom.size() - 2);
-        List<Integer> children1 = new ArrayList<>();
-        List<Integer> children2 = new ArrayList<>();
-
-        for (int i = 0; i < cut; i++) {
-            children1.add(mom.get(i));
-            children2.add(dad.get(i));
+    protected List<Chromosome> chrossover(Chromosome mom, Chromosome dad, Class classObject) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        int[] children1 = new int[chromosomeSize];
+        int[] children2 = new int[chromosomeSize];
+        int nCuts = 2;
+        int[] cut = new int[nCuts];
+        for (int i = 0; i < nCuts; i++) {
+            cut[i] = r.nextInt(1, mom.size() - 2);
         }
+        Arrays.sort(cut);
 
-        for (int i = cut; i < mom.size(); i++) {
-            children1.add(dad.get(i));
-            children2.add(mom.get(i));
+        for (int i = -1; i < nCuts; i++) {
+            int initial = 0;
+            int limit = mom.size();
+            if (i != -1) {
+                initial = cut[i];
+            }
+            if (i != nCuts - 1) {
+                limit = cut[i + 1];
+            }
+            for (int c = initial; c < limit; c++) {
+                if (i % 2 == 0) {
+                    children1[c] = mom.get(c);
+                    children2[c] = dad.get(c);
+                } else {
+                    children2[c] = mom.get(c);
+                    children1[c] = dad.get(c);
+                }
+            }
         }
+//        for (int i = 0; i < cut; i++) {
+//            children1[i] = mom.get(i);
+//            children2[i] = dad.get(i);
+//        }
+//
+//        for (int i = cut; i < mom.size(); i++) {
+//            children1[i] = dad.get(i);
+//            children2[i] = mom.get(i);
+//        }
 
-        Chromosome chromosome1 = new Chromosome(this, children1);
-        Chromosome chromosome2 = new Chromosome(this, children2);
+        T chromosome1 = (T) classObject.getDeclaredConstructor(Generation.class, int[].class).newInstance(this, children1);
+        T chromosome2 = (T) classObject.getDeclaredConstructor(Generation.class, int[].class).newInstance(this, children2);
+//        Chromosome chromosome1 = new Chromosome(this, children1);
+//        Chromosome chromosome2 = new Chromosome(this, children2);
 
         return Arrays.asList(chromosome1, chromosome2);
     }
@@ -89,6 +155,7 @@ public class Generation {
      * @return
      */
     protected List<Pair> getParents() {
+        updateTotalFitness();
         List<Pair> parents = new ArrayList<>();
         do {
             Pair newParent = new Pair(getRouletteRandom(), getRouletteRandom());
@@ -149,14 +216,18 @@ public class Generation {
      * Sum all the fitness
      */
     private void updateTotalFitness() {
-        totalFitness = getChromosomeList().mapToInt(chromosome -> chromosome.getFitness()).sum();
+        try {
+            totalFitness = getChromosomeList().mapToInt(chromosome -> chromosome.getFitness()).sum();
+        } catch (Exception e) {
+            System.err.println("Fitness não atualizado");
+        }
     }
 
     /**
      * Gene list as a stream for a unique use
      * @return
      */
-    public Stream<Chromosome> getChromosomeList() {
+    public Stream<T> getChromosomeList() {
         return chromosomeList.stream();
     }
 
@@ -164,7 +235,7 @@ public class Generation {
      * Insert a new chromosome into the list
      * @param chromosome
      */
-    public void add(Chromosome chromosome) {
+    public void add(T chromosome) {
         chromosomeList.add(chromosome);
         updateTotalFitness();
     }
@@ -192,6 +263,15 @@ public class Generation {
      */
     public int getId() {
         return id;
+    }
+
+    /**
+     * The chromosome in a index position
+     * @param index
+     * @return
+     */
+    public Chromosome get(int index) {
+        return chromosomeList.get(index);
     }
 
     /**
@@ -228,7 +308,7 @@ public class Generation {
     }
 
     private static class NextId {
-        private static int LAST_ID = 0;
+        private static int LAST_ID = -1;
 
         public synchronized static int nextId() {
             LAST_ID++;
