@@ -76,7 +76,8 @@ public class Generation <T extends Chromosome> {
         parents.stream().parallel().forEach(parent ->
                 {
                     try {
-                        List<Chromosome> chromosomes = chrossover((T) parent.getKey(), (T) parent.getValue(), classObject);
+                        List<Chromosome> chromosomes = chrossover(
+                                (T) parent.getKey(), (T) parent.getValue(), classObject);
                         next.addAll(chromosomes);
                         for (Chromosome chromosome : chromosomes) {
                             chromosome.mutation();
@@ -106,7 +107,7 @@ public class Generation <T extends Chromosome> {
         ThreadLocalRandom r = ThreadLocalRandom.current();
         int[] children1 = new int[chromosomeSize];
         int[] children2 = new int[chromosomeSize];
-        int nCuts = 2;
+        int nCuts = 5;
         int[] cut = new int[nCuts];
         for (int i = 0; i < nCuts; i++) {
             cut[i] = r.nextInt(1, mom.size() - 2);
@@ -132,20 +133,11 @@ public class Generation <T extends Chromosome> {
                 }
             }
         }
-//        for (int i = 0; i < cut; i++) {
-//            children1[i] = mom.get(i);
-//            children2[i] = dad.get(i);
-//        }
-//
-//        for (int i = cut; i < mom.size(); i++) {
-//            children1[i] = dad.get(i);
-//            children2[i] = mom.get(i);
-//        }
 
-        T chromosome1 = (T) classObject.getDeclaredConstructor(Generation.class, int[].class).newInstance(this, children1);
-        T chromosome2 = (T) classObject.getDeclaredConstructor(Generation.class, int[].class).newInstance(this, children2);
-//        Chromosome chromosome1 = new Chromosome(this, children1);
-//        Chromosome chromosome2 = new Chromosome(this, children2);
+        T chromosome1 = (T) classObject.getDeclaredConstructor(Generation.class, int[].class)
+                .newInstance(this, children1);
+        T chromosome2 = (T) classObject.getDeclaredConstructor(Generation.class, int[].class)
+                .newInstance(this, children2);
 
         return Arrays.asList(chromosome1, chromosome2);
     }

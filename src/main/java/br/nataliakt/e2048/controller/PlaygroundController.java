@@ -7,7 +7,6 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
@@ -20,10 +19,12 @@ import java.util.TimerTask;
 
 public class PlaygroundController {
 
-    private static final int GENERATIONS_LIMIT = 10000; // Number of generations
+    private static final int GENERATIONS_LIMIT = 200; // Number of generations
+    private static final int NUMBER_LIMIT = 2048;
+    private static final int FITNESS_LIMIT = 20000;
     private static final double MUTATION = 0.005;
-    private static final int CHROMOSOME_SIZE = 500; // Number of moviments
-    private static final int GENERATION_SIZE = 20; // Simultaneous games
+    private static final int CHROMOSOME_SIZE = 400; // Number of moviments
+    private static final int GENERATION_SIZE = 8; // Simultaneous games
 
 
     @FXML
@@ -97,7 +98,9 @@ public class PlaygroundController {
     private void nextGeneration() {
         Platform.runLater(() -> {
             updateScreenValues(true);
-            if (generation.getId() == GENERATIONS_LIMIT) {
+            if (generation.getId() == GENERATIONS_LIMIT ||
+                    Integer.parseInt(bestNumberLabel.getText()) >= NUMBER_LIMIT ||
+                    Integer.parseInt(bestFitnessLabel.getText()) >= FITNESS_LIMIT) {
                 return;
             }
 
@@ -115,43 +118,47 @@ public class PlaygroundController {
     }
 
     private void updateScreenValues(boolean print) {
-        Game bestFitness = generation.getChromosomeList().max(
-                Comparator.comparingInt(Chromosome::getFitness)).get();
-        int oldBestFitness = Integer.parseInt(bestFitnessLabel.getText());
-        if (bestFitness.getFitness() > oldBestFitness) {
-            bestFitnessLabel.setText(String.valueOf(bestFitness.getFitness()));
-        }
-        final int[] max = {2};
-        generation.getChromosomeList().forEach(game -> {
-            for (SimpleIntegerProperty[] line : game.getBoard()) {
-                for (SimpleIntegerProperty element : line) {
-                    if (max[0] < element.get()) {
-                        max[0] = element.get();
+        try {
+            Game bestFitness = generation.getChromosomeList().max(
+                    Comparator.comparingInt(Chromosome::getFitness)).get();
+            int oldBestFitness = Integer.parseInt(bestFitnessLabel.getText());
+            if (bestFitness.getFitness() > oldBestFitness) {
+                bestFitnessLabel.setText(String.valueOf(bestFitness.getFitness()));
+            }
+            final int[] max = {2};
+            generation.getChromosomeList().forEach(game -> {
+                for (SimpleIntegerProperty[] line : game.getBoard()) {
+                    for (SimpleIntegerProperty element : line) {
+                        if (max[0] < element.get()) {
+                            max[0] = element.get();
+                        }
                     }
                 }
+            });
+            if (Integer.parseInt(bestNumberLabel.getText()) < max[0]) {
+                bestNumberLabel.setText(String.valueOf(max[0]));
             }
-        });
-        if (Integer.parseInt(bestNumberLabel.getText()) < max[0]) {
-            bestNumberLabel.setText(String.valueOf(max[0]));
-        }
 
-        Game bestMoviment = generation.getChromosomeList().max(
-                Comparator.comparingInt(c -> c.getMoviments().get())).get();
-        int oldBestMoviment = Integer.parseInt(bestMovimentLabel.getText());
-        if (bestMoviment.getMoviments().get() > oldBestMoviment) {
-            bestMovimentLabel.setText(String.valueOf(bestMoviment.getMoviments().get()));
-        }
-        if (print) {
-            System.out.println("Geração: " + generation.getId());
-            System.out.println("Melhor Fitness Geração: " + bestFitness.getFitness());
-            System.out.println("Melhor Número Geração: " + max[0]);
-            System.out.println("Melhor Movimento Geração: " + bestMoviment.getMoviments().get());
-            System.out.println("Melhor Fitness: " + bestFitnessLabel.getText());
-            System.out.println("Melhor Número: " + bestNumberLabel.getText());
-            System.out.println("Melhor Movimento: " + bestMovimentLabel.getText());
+            Game bestMoviment = generation.getChromosomeList().max(
+                    Comparator.comparingInt(c -> c.getMoviments().get())).get();
+            int oldBestMoviment = Integer.parseInt(bestMovimentLabel.getText());
+            if (bestMoviment.getMoviments().get() > oldBestMoviment) {
+                bestMovimentLabel.setText(String.valueOf(bestMoviment.getMoviments().get()));
+            }
+            if (print) {
+                System.out.println("Geração: " + generation.getId());
+                System.out.println("Melhor Fitness Geração: " + bestFitness.getFitness());
+                System.out.println("Melhor Número Geração: " + max[0]);
+                System.out.println("Melhor Movimento Geração: " + bestMoviment.getMoviments().get());
+                System.out.println("Melhor Fitness: " + bestFitnessLabel.getText());
+                System.out.println("Melhor Número: " + bestNumberLabel.getText());
+                System.out.println("Melhor Movimento: " + bestMovimentLabel.getText());
 //            System.out.println(generation);
-            System.out.println();
-            System.out.println();
+                System.out.println();
+                System.out.println();
+            }
+        } catch (Exception e) {
+            System.err.println("Estatísticas não printadas");
         }
     }
 

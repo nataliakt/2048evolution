@@ -20,8 +20,10 @@ class GenerationTest {
     private static Generation generation;
 
     @BeforeAll
-    static void setUp() throws NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
-        generation = new Generation(GENE_LIMIT, GENE_MUTATION, CHROMOSOME_LENGTH, GENERATION_LENGTH, Chromosome.class);
+    static void setUp() throws NoSuchMethodException, InstantiationException,
+            IllegalAccessException, InvocationTargetException {
+        generation = new Generation(GENE_LIMIT, GENE_MUTATION,
+                CHROMOSOME_LENGTH, GENERATION_LENGTH, Chromosome.class);
         System.out.println(generation);
     }
 
